@@ -1,0 +1,12 @@
+/.vs
+/bin64
+*.obj
+*.vcxproj.user
+*.exe.recipe
+*.ilk
+*.tlog
+*.log
+*.idb
+*.pdb
+*.iobj
+*.ipdb
