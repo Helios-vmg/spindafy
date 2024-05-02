@@ -13,7 +13,7 @@ Process them through spindafy:
 spindafy ..\res input output
 
 Reassemble the output into the final video:
-ffmpeg.exe -y -framerate 30 -i ".\output\%05d.png" -c:v libx264 bad_apple.mp4
+ffmpeg -y -framerate 30 -i ".\output\%05d.png" -c:v libx264 bad_apple.mp4
 
 Note: Running spindafy is a time-consuming process. The running time depends on
 the specific content that will be processed. The Bad Apple!! video took over
