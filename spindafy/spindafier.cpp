@@ -7,6 +7,7 @@
 namespace{
 u64 compute_difference_energy(const Image &a, const Image &b);
 u32 find_best_fit(const Resources &res, const Image &src, size_t mask_index);
+u32 find_best_fit2(Image &rendered_spots, Image &mask, const Resources &res, const Image &src, size_t mask_index);
 u32 find_random_fit(const Resources &res, const Image &src, std::mt19937 &rng);
 std::set<float>::const_iterator get_iterator(const std::set<float> &set, size_t i);
 std::pair<float, bool> compute_pseudo_median(Image &img);
@@ -33,6 +34,9 @@ Image Spindafier::spindafy(const Image &src_, std::mt19937 *rng) const{
 	const int x_increment = 25;
 	const int y_increment = 20;
 
+	Image mask = Image::allocate_same_size(this->res.mask);
+	Image rendered_spots = mask;
+
 	for (int y = 0; y < src.height(); y += y_increment){
 		bool last_y = y + y_increment >= src.width();
 		for (int x = 0; x < src.width(); x += x_increment){
@@ -47,13 +51,13 @@ Image Spindafier::spindafy(const Image &src_, std::mt19937 *rng) const{
 			auto color = get_color(sliced);
 			if (!color){
 				if (!rng)
-					solution = find_best_fit(this->res, sliced, mask_index);
+					solution = find_best_fit2(rendered_spots, mask, this->res, sliced, mask_index);
 				else
 					solution = find_random_fit(this->res, sliced, *rng);
 			}else
 				solution = !*color ? this->black_cases[mask_index] : this->white_case;
 
-			ret.alpha_blend(SpotConfiguration(solution).full_render(res), p - this->res.mask_bounding_box_corner);
+			ret.pseudo_alpha_blend(SpotConfiguration(solution).full_render(res), p - this->res.mask_bounding_box_corner);
 		}
 	}
 
@@ -108,6 +112,45 @@ u64 compute_difference_energy(const Image &a, const Image &b){
 		}
 	}
 	return total_energy;
+}
+
+u64 compute_difference_energy2(const Image &a, const Image &b, const Point &corner, const Point &size){
+	u64 total_energy = 0;
+	for (int y = 0; y < size.y; y++){
+		for (int x = 0; x < size.x; x++){
+			auto a0 = a.get(x, y);
+			auto b0 = b.get(x + corner.x, y + corner.y);
+			auto d = a0.simmetric_difference(b0);
+			total_energy += d.compute_integer_luma();
+		}
+	}
+	return total_energy;
+}
+
+u32 find_best_fit2(Image &rendered_spots, Image &mask, const Resources &res, const Image &src, size_t mask_index){
+	u32 ret = 0;
+	for (int i = 0; i < spot_count; i++){
+		int best = -1;
+		std::optional<u64> min_diff;
+		for (int j = 0; j < 256; j++){
+			ret &= ~((u32)0xFF << (i * 8));
+			ret |= (u32)j << (i * 8);
+
+			rendered_spots.fill({ 0xFF, 0xFF, 0xFF });
+			mask.fill({ 0xFF, 0xFF, 0xFF });
+			SpotConfiguration(ret).minimal_render2(rendered_spots, mask, res, mask_index);
+
+			auto diff = compute_difference_energy2(src, rendered_spots, res.mask_bounding_box_corner, res.mask_bounding_box_size);
+
+			if (!min_diff || diff < min_diff){
+				best = j;
+				min_diff = diff;
+			}
+		}
+		ret &= ~((u32)0xFF << (i * 8));
+		ret |= (u32)best << (i * 8);
+	}
+	return ret;
 }
 
 u32 find_best_fit(const Resources &res, const Image &src, size_t mask_index){

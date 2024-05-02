@@ -32,8 +32,9 @@ public:
 	pixel get(int x, int y) const;
 	pixel &set(int x, int y);
 	void fill(pixel);
+	void fill_alpha(u8);
 	void blit(const Image &, Point = {});
-	void alpha_blend(const Image &, Point = {});
+	void pseudo_alpha_blend(const Image &, Point = {});
 	void multiply_alpha_from(const Image &);
 	auto width() const{
 		return this->w;

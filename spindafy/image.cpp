@@ -103,6 +103,11 @@ void Image::fill(pixel color){
 	std::fill(this->data.begin(), this->data.end(), color);
 }
 
+void Image::fill_alpha(u8 color){
+	for (auto &p : this->data)
+		p.a = color;
+}
+
 void Image::blit(const Image &src, Point point){
 	for (int y = 0; y < src.h; y++){
 		auto Y = point.y + y;
@@ -117,11 +122,8 @@ void Image::blit(const Image &src, Point point){
 	}
 }
 
-u8 apply_alpha(u8 over, u8 under, u8 alpha){
-	return (((alpha ^ 0xFF) * under + alpha * over) / 255);
-}
-
-void Image::alpha_blend(const Image &src, Point point){
+//Assumes alpha channels are either 0x00 or 0xFF.
+void Image::pseudo_alpha_blend(const Image &src, Point point){
 	for (int y = 0; y < src.h; y++){
 		auto Y = point.y + y;
 		if (Y < 0 || Y >= this->h)
@@ -131,24 +133,9 @@ void Image::alpha_blend(const Image &src, Point point){
 			if (X < 0 || X >= this->w)
 				continue;
 
-			auto under = this->get(X, Y);
 			auto over = src.get(x, y);
-
-			auto bottom_alpha = 0xFF & ~((over.a ^ 0xFF) * (under.a ^ 0xFF) / 255U);
-			under.a = bottom_alpha;
-			if (bottom_alpha){
-				u8 composite = over.a * 255U / bottom_alpha;
-				if (composite == 255){
-					under.r = over.r;
-					under.g = over.g;
-					under.b = over.b;
-				}else{
-					under.r = apply_alpha(over.r, under.r, composite);
-					under.g = apply_alpha(over.g, under.g, composite);
-					under.b = apply_alpha(over.b, under.b, composite);
-				}
-			}
-			this->set(X, Y) = under;
+			if (over.a)
+				this->set(X, Y) = over;
 		}
 	}
 }
